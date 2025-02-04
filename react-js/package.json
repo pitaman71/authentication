@@ -1,6 +1,6 @@
 {
-  "name": "@pitaman71/auth-react",
-  "version": "1.0.0",
+  "name": "@pitaman71/auth-reactjs",
+  "version": "0.5.1",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
