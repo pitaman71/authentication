@@ -5,7 +5,7 @@ A React component library for handling authentication flows with Google and Appl
 ## Installation
 
 ```bash
-npm install @pitaman71/auth-react
+npm install @pitaman71/auth-reactjs
 ```
 
 ## Usage
@@ -13,7 +13,7 @@ npm install @pitaman71/auth-react
 ### 1. Wrap your app with AuthProvider
 
 ```tsx
-import { AuthProvider } from '@pitaman71/auth-react';
+import { AuthProvider } from '@pitaman71/auth-reactjs';
 
 function App() {
   return (
@@ -27,7 +27,7 @@ function App() {
 ### 2. Use the auth hook in your components
 
 ```tsx
-import { useAuth } from '@pitaman71/auth-react';
+import { useAuth } from '@pitaman71/auth-reactjs';
 
 function LoginComponent() {
   const { user, loginWithGoogle, loginWithApple, logout } = useAuth();
@@ -89,7 +89,7 @@ interface User {
 A pre-built login component with Google and Apple sign-in buttons.
 
 ```tsx
-import { LoginScreen } from '@pitaman71/auth-react';
+import { LoginScreen } from '@pitaman71/auth-reactjs';
 
 function App() {
   return (
@@ -127,7 +127,7 @@ const [value, setValue] = useLocalStorage<T>(key: string, initialValue: T);
 Example of protecting routes with authentication:
 
 ```tsx
-import { useAuth } from '@pitaman71/auth-react';
+import { useAuth } from '@pitaman71/auth-reactjs';
 import { Navigate, Route } from 'react-router-dom';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -163,7 +163,7 @@ The library automatically handles:
 Example API wrapper:
 
 ```tsx
-import { useAuth } from '@pitaman71/auth-react';
+import { useAuth } from '@pitaman71/auth-reactjs';
 
 function useApi() {
   const { refreshAccessToken } = useAuth();
@@ -203,7 +203,7 @@ function useApi() {
 The library uses Tailwind CSS classes which can be overridden:
 
 ```tsx
-import { LoginScreen } from '@pitaman71/auth-react';
+import { LoginScreen } from '@pitaman71/auth-reactjs';
 
 function CustomLogin() {
   return (
@@ -219,7 +219,7 @@ function CustomLogin() {
 You can create your own login UI while using the auth hooks:
 
 ```tsx
-import { useAuth } from '@pitaman71/auth-react';
+import { useAuth } from '@pitaman71/auth-reactjs';
 
 function CustomLoginScreen() {
   const { loginWithGoogle, loginWithApple } = useAuth();
@@ -251,7 +251,7 @@ function CustomLoginScreen() {
 The library provides built-in error handling for common scenarios:
 
 ```tsx
-import { useAuth } from '@pitaman71/auth-react';
+import { useAuth } from '@pitaman71/auth-reactjs';
 
 function LoginComponent() {
   const { loginWithGoogle } = useAuth();
@@ -279,7 +279,7 @@ Example test setup:
 
 ```tsx
 import { render, screen, fireEvent } from '@testing-library/react';
-import { AuthProvider } from '@pitaman71/auth-react';
+import { AuthProvider } from '@pitaman71/auth-reactjs';
 
 // Mock provider for testing
 const TestProvider = ({ children }) => (
@@ -305,7 +305,7 @@ describe('Auth Components', () => {
 The library is written in TypeScript and provides full type definitions:
 
 ```tsx
-import { User, AuthContextType } from '@pitaman71/auth-react';
+import { User, AuthContextType } from '@pitaman71/auth-reactjs';
 
 // Example type usage
 const UserProfile: React.FC<{ user: User }> = ({ user }) => (

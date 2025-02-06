@@ -10,28 +10,97 @@ npm install passport passport-google-oauth20 passport-apple
 npm install joi
 ```
 
+## Setting Up Developer Accounts
+
+### Apple Developer Console Setup
+1. Sign in to developer.apple.com
+2. Register App ID:
+   - Go to Certificates, IDs & Profiles > Identifiers
+   - Click [+] > App IDs > App
+   - Enter description and Bundle ID (e.g., com.yourcompany.app)
+   - Enable "Sign In with Apple"
+   - Save
+
+3. Create Services ID:
+   - Return to Identifiers
+   - Click [+] > Services IDs
+   - Enter identifier (e.g., com.yourcompany.app.service)
+   - Enable "Sign In with Apple"
+   - Configure domains and return URLs
+   - Save
+
+4. Generate Private Key:
+   - Go to Keys section
+   - Click [+]
+   - Name your key
+   - Enable "Sign In with Apple"
+   - Register and download .p8 file
+   - Note the Key ID
+
+### Google Cloud Console Setup
+1. Go to console.cloud.google.com
+2. Create new project or select existing one
+3. Enable OAuth API:
+   - Go to APIs & Services > OAuth consent screen
+   - Choose User Type (External/Internal)
+   - Fill required app information
+   - Add scopes for 'email' and 'profile'
+   - Add test users if in testing mode
+
+4. Create OAuth Credentials:
+   - Go to APIs & Services > Credentials
+   - Click Create Credentials > OAuth client ID
+   - Choose Web application
+   - Add authorized redirect URIs (e.g., http://localhost:3000/auth/google/callback)
+   - Save and note Client ID and Client Secret
+
+## JWT Secrets
+
+You should rotate JWT secrets every:
+- Access token secrets: 3-6 months
+- Refresh token secrets: Monthly
+
+Key considerations:
+- Longer periods increase risk if compromised
+- Need grace period during rotation for valid existing tokens
+- Must invalidate all tokens when rotating for security incidents
+
+For rotation, implement versioned keys and gradual migration to minimize user impact.
+
+Use OpenSSL to generate a secure random 64-byte base64 string:
+
+```bash
+openssl rand -base64 64 | tr -d '\n'
+```
+
+This creates cryptographically secure values suitable for JWT secrets.
+
 ## Environment Variables
 
-Create a `.env` file:
+Create a `.env` file in the root directory of your project. Below is a detailed explanation of each required environment variable:
 
-```env
-# JWT Configuration
-JWT_SECRET=your-secret-key
-JWT_EXPIRES_IN=1h
-REFRESH_EXPIRES_IN=7d
+### JWT Configuration
+- `JWT_SECRET`: A secure string used to sign and verify JSON Web Tokens. Use a strong, randomly generated value at least 32 characters long.
+- `JWT_EXPIRES_IN`: Duration until the access token expires (e.g., '1h', '30m'). Default: 1 hour
+- `REFRESH_EXPIRES_IN`: Duration until the refresh token expires (e.g., '7d', '30d'). Default: 7 days
 
-# Google OAuth
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_CALLBACK_URL=http://localhost:3000/auth/google/callback
+### Google OAuth Configuration
+- `GOOGLE_CLIENT_ID`: OAuth 2.0 client ID from Google Cloud Console
+- `GOOGLE_CLIENT_SECRET`: OAuth 2.0 client secret from Google Cloud Console
+- `GOOGLE_CALLBACK_URL`: URL where Google will redirect after authentication
+  - Format: `http://your-domain/auth/google/callback`
+  - For local development: `http://localhost:3000/auth/google/callback`
 
-# Apple Sign In
-APPLE_CLIENT_ID=your-apple-client-id
-APPLE_TEAM_ID=your-team-id
-APPLE_KEY_ID=your-key-id
-APPLE_PRIVATE_KEY_LOCATION=path/to/private/key
-APPLE_CALLBACK_URL=http://localhost:3000/auth/apple/callback
-```
+### Apple Sign In Configuration
+- `APPLE_CLIENT_ID`: Your App ID/Services ID from Apple Developer portal
+- `APPLE_TEAM_ID`: Your 10-character Team ID from Apple Developer account
+- `APPLE_KEY_ID`: The 10-character Key ID for your Sign in with Apple private key
+- `APPLE_PRIVATE_KEY_LOCATION`: File path to your `.p8` private key file
+  - Example: `./config/AuthKey_XXXXXXXXXX.p8`
+- `APPLE_CALLBACK_URL`: URL where Apple will redirect after authentication
+  - Format: `http://your-domain/auth/apple/callback`
+  - For local development: `http://localhost:3000/auth/apple/callback`
+
 
 ## Module Structure
 
@@ -52,8 +121,7 @@ Add AuthModule to your app.module.ts:
 ```typescript
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { AuthModule } from './auth.module';
-import { authConfigSchema } from './auth.config';
+import { AuthModule, authConfigSchema } from '@pitaman71/auth-nestjs';
 
 @Module({
   imports: [

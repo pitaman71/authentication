@@ -1,69 +1,63 @@
-import { render, screen, act, fireEvent } from '@testing-library/react';
+// react-js/src/auth.provider.test.tsx
+import { render, screen, act } from '@testing-library/react';
 import { AuthProvider } from './auth.provider';
 import { useAuth } from './auth.hooks';
 import { jwtDecode } from 'jwt-decode';
 
 jest.mock('jwt-decode');
 
-// Mock storage
-const mockStorage = new Map<string, string>();
-
-const localStorageMock = {
-  getItem: jest.fn((key: string) => mockStorage.get(key) || null),
-  setItem: jest.fn((key: string, value: string) => {
-    mockStorage.set(key, value);
-  }),
-  removeItem: jest.fn((key: string) => {
-    mockStorage.delete(key);
-  }),
-  clear: jest.fn(() => {
-    mockStorage.clear();
-  }),
-};
-
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
-
-// Mock event listener management with proper types
-type EventHandler = (event: MessageEvent) => void;
-const eventListeners: { [key: string]: EventHandler[] } = {};
-
-const mockAddEventListener = jest.fn((event: string, handler: EventHandler) => {
-  if (!eventListeners[event]) {
-    eventListeners[event] = [];
+interface MockStorage {
+    store: Map<string, string>;
+    getItem: jest.Mock;
+    setItem: jest.Mock;
+    removeItem: jest.Mock;
+    clear: jest.Mock;
+    has: (key: string) => boolean;
+    get: (key: string) => string | undefined;
+    set: (key: string, value: string) => void;
   }
-  eventListeners[event].push(handler);
+  
+  const mockStorage: MockStorage = {
+    store: new Map<string, string>(),
+    getItem: jest.fn((key) => mockStorage.store.get(key) || null),
+    setItem: jest.fn((key, value) => mockStorage.store.set(key, value)),
+    removeItem: jest.fn((key) => mockStorage.store.delete(key)),
+    clear: jest.fn(() => mockStorage.store.clear()),
+    has: (key: string) => mockStorage.store.has(key),
+    get: (key: string) => mockStorage.store.get(key),
+    set: (key: string, value: string) => mockStorage.store.set(key, value),
+  };
+  
+Object.defineProperty(window, 'localStorage', { value: mockStorage });
+
+// Mock location
+const mockLocation = new URL('http://localhost:3000');
+Object.defineProperty(window, 'location', {
+  value: {
+    ...window.location,
+    href: mockLocation.href,
+    search: '',
+    assign: jest.fn((url) => {
+      mockLocation.href = url;
+    }),
+  },
+  writable: true,
 });
-
-const mockRemoveEventListener = jest.fn((event: string, handler: EventHandler) => {
-  if (!eventListeners[event]) return;
-  const idx = eventListeners[event].indexOf(handler);
-  if (idx > -1) {
-    eventListeners[event].splice(idx, 1);
-  }
-});
-
-window.addEventListener = mockAddEventListener as any;
-window.removeEventListener = mockRemoveEventListener as any;
-
-// Helper to trigger events
-const triggerEvent = (event: string, data: any) => {
-  if (eventListeners[event]) {
-    eventListeners[event].forEach(handler => 
-      handler(new MessageEvent('message', {
-        data,
-        origin: 'http://localhost:3000'
-      }))
-    );
-  }
-};
 
 const TestComponent = () => {
   const auth = useAuth();
   return (
     <div>
       <div data-testid="user-email">{auth.user?.email}</div>
-      <button onClick={auth.loginWithGoogle} data-testid="google-login">Google Login</button>
-      <button onClick={auth.logout} data-testid="logout">Logout</button>
+      <button onClick={() => auth.loginWithGoogle()} data-testid="google-login">
+        Google Login
+      </button>
+      <button onClick={() => auth.loginWithApple()} data-testid="apple-login">
+        Apple Login
+      </button>
+      <button onClick={auth.logout} data-testid="logout">
+        Logout
+      </button>
     </div>
   );
 };
@@ -72,10 +66,7 @@ describe('AuthProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockStorage.clear();
-    Object.keys(eventListeners).forEach(key => {
-      delete eventListeners[key];
-    });
-    window.open = jest.fn().mockReturnValue({ closed: false });
+    window.location.search = '';
   });
 
   it('initializes with null user when no token present', () => {
@@ -84,7 +75,7 @@ describe('AuthProvider', () => {
         <TestComponent />
       </AuthProvider>
     );
-    expect(screen.getByTestId('user-email')?.textContent).toBe('');
+    expect(screen.getByTestId('user-email').textContent).toBe('');
   });
 
   it('initializes user from valid access token', () => {
@@ -97,61 +88,56 @@ describe('AuthProvider', () => {
     (jwtDecode as jest.Mock).mockReturnValue(mockDecodedToken);
     
     mockStorage.set('accessToken', JSON.stringify('valid-token'));
-
+    
     render(
       <AuthProvider>
         <TestComponent />
       </AuthProvider>
     );
-
-    expect(screen.getByTestId('user-email')?.textContent).toBe('test@example.com');
+    
+    expect(screen.getByTestId('user-email').textContent).toBe('test@example.com');
   });
 
-  it('handles Google login flow', async () => {
+  it('handles social login redirects', async () => {
     render(
       <AuthProvider>
         <TestComponent />
       </AuthProvider>
     );
 
-    const loginButton = screen.getByTestId('google-login');
+    await act(async () => {
+      screen.getByTestId('google-login').click();
+    });
+
+    expect(window.location.href).toContain('/auth/google/authorize');
+  });
+
+  it('handles OAuth callback', async () => {
+    const mockCode = 'test-auth-code';
+    window.location.search = `?code=${mockCode}`;
     
-    await act(async () => {
-      fireEvent.click(loginButton);
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        accessToken: 'new-token',
+        refreshToken: 'new-refresh-token'
+      })
     });
 
-    expect(window.open).toHaveBeenCalledWith(
-      expect.stringContaining('/auth/google'),
-      'Google Sign In',
-      expect.any(String)
-    );
-
-    const mockTokenResponse = {
-      accessToken: 'new-access-token',
-      refreshToken: 'new-refresh-token',
-    };
-
     await act(async () => {
-      triggerEvent('message', mockTokenResponse);
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      );
     });
 
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'accessToken',
-      JSON.stringify(mockTokenResponse.accessToken)
-    );
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'refreshToken',
-      JSON.stringify(mockTokenResponse.refreshToken)
-    );
+    expect(mockStorage.get('accessToken')).toBe(JSON.stringify('new-token'));
+    expect(mockStorage.get('refreshToken')).toBe(JSON.stringify('new-refresh-token'));
   });
 
   it('handles logout', async () => {
-    global.fetch = jest.fn().mockImplementation(() =>
-      Promise.resolve({
-        ok: true
-      })
-    );
-
+    global.fetch = jest.fn().mockResolvedValueOnce({ ok: true });
     mockStorage.set('accessToken', JSON.stringify('test-token'));
     mockStorage.set('refreshToken', JSON.stringify('test-refresh-token'));
 
@@ -161,15 +147,71 @@ describe('AuthProvider', () => {
       </AuthProvider>
     );
 
-    const logoutButton = screen.getByTestId('logout');
-    
     await act(async () => {
-      fireEvent.click(logoutButton);
+      screen.getByTestId('logout').click();
     });
 
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('accessToken');
-    expect(localStorageMock.removeItem).toHaveBeenCalledWith('refreshToken');
     expect(mockStorage.has('accessToken')).toBe(false);
     expect(mockStorage.has('refreshToken')).toBe(false);
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/logout'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer test-token'
+        }
+      })
+    );
+  });
+
+  it('refreshes expired tokens', async () => {
+    // Setup expired token
+    const expiredToken = {
+      sub: '123',
+      email: 'test@example.com',
+      exp: Math.floor(Date.now() / 1000) - 3600,
+    };
+    
+    (jwtDecode as jest.Mock).mockReturnValue(expiredToken);
+    mockStorage.set('accessToken', JSON.stringify('expired-token'));
+    mockStorage.set('refreshToken', JSON.stringify('refresh-token'));
+
+    // Mock successful token refresh
+    jest.spyOn(global, 'fetch').mockImplementation(() => 
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          accessToken: 'new-token',
+          refreshToken: 'new-refresh-token'
+        })
+      } as Response)
+    );
+
+    // Render with expired token, triggering refresh
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      );
+    });
+
+    // Wait for state updates
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+
+    // Verify API call
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/auth/refresh'),
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: 'refresh-token' })
+      })
+    );
+
+    // Verify token was updated
+    expect(mockStorage.get('accessToken')).toBe(JSON.stringify('new-token'));
   });
 });

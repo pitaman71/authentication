@@ -11,8 +11,8 @@ export interface User {
 
 export interface AuthContextType {
   user: User | null;
-  loginWithGoogle: () => Promise<void>;
-  loginWithApple: () => Promise<void>;
+  loginWithGoogle: () => void;
+  loginWithApple: () => void;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<void>;
 }
@@ -58,66 +58,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [accessToken]);
 
-  const loginWithGoogle = async () => {
-    try {
-      const popup = window.open(
-        `${API_URL}/auth/google`,
-        'Google Sign In',
-        'width=500,height=600'
-      );
-
-      if (!popup) {
-        throw new Error('Failed to open popup');
-      }
-
-      const result: TokenResponse = await new Promise((resolve, reject) => {
-        window.addEventListener('message', (event) => {
-          if (event.origin !== API_URL) return;
-          if (event.data.error) {
-            reject(new Error(event.data.error));
-          } else {
-            resolve(event.data as TokenResponse);
-          }
-        });
+  // Handle OAuth callback
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    
+    if (code) {
+      fetch(`${API_URL}/auth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      })
+      .then(res => res.json())
+      .then((data: TokenResponse) => {
+        setAccessToken(data.accessToken);
+        setRefreshToken(data.refreshToken);
+        window.history.replaceState({}, '', window.location.pathname);
+      })
+      .catch(error => {
+        console.error('Token exchange error:', error);
+        logout();
       });
-
-      setAccessToken(result.accessToken);
-      setRefreshToken(result.refreshToken);
-    } catch (error) {
-      console.error('Google login error:', error);
-      throw error;
     }
+  }, []);
+
+  const loginWithGoogle = () => {
+    window.location.href = `${API_URL}/auth/google/authorize`;
   };
 
-  const loginWithApple = async () => {
-    try {
-      const popup = window.open(
-        `${API_URL}/auth/apple`,
-        'Apple Sign In',
-        'width=500,height=600'
-      );
-
-      if (!popup) {
-        throw new Error('Failed to open popup');
-      }
-
-      const result: TokenResponse = await new Promise((resolve, reject) => {
-        window.addEventListener('message', (event) => {
-          if (event.origin !== API_URL) return;
-          if (event.data.error) {
-            reject(new Error(event.data.error));
-          } else {
-            resolve(event.data as TokenResponse);
-          }
-        });
-      });
-
-      setAccessToken(result.accessToken);
-      setRefreshToken(result.refreshToken);
-    } catch (error) {
-      console.error('Apple login error:', error);
-      throw error;
-    }
+  const loginWithApple = () => {
+    window.location.href = `${API_URL}/auth/apple/authorize`;
   };
 
   const logout = async () => {

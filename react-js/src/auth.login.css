@@ -1,0 +1,63 @@
+.login-container {
+  width: 100%;
+  display: flex;
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-button-container {
+  width: fit-content;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+}
+
+.login-button {
+  position: relative;
+  width: 200px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.login-button > svg {
+  height: 22px;
+  width: 22px;
+}
+
+.login-button.light {
+  background: white;
+  border: 1px solid #dadce0;
+  color: #3c4043;
+}
+
+.login-button.dark {
+  background: #000000;
+  border: none;
+  color: white;
+}
+
+.login-button:hover.light {
+  background: #f8f9fa;
+  box-shadow: 0 1px 2px rgba(60,64,67,.1);
+}
+
+.login-button:hover.dark {
+  background: #1F1F1F;
+}
+
+.login-button:focus {
+  outline: 1px solid #2F2F2F;
+  outline-offset: 2px;
+}
+
+.button-text {
+  flex-grow: 1;
+  text-align: center;
+  padding-right: 10px;
+}
