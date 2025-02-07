@@ -6,46 +6,15 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as AppleStrategy } from 'passport-apple';
 import { PassportStrategy } from '@nestjs/passport';
 
-@Injectable()
-export class GoogleAuthStrategy extends PassportStrategy(GoogleStrategy, 'google') {
-  constructor(private configService: ConfigService) {
-    super({
-      clientID: configService.get('GOOGLE_CLIENT_ID'),
-      clientSecret: configService.get('GOOGLE_CLIENT_SECRET'),
-      callbackURL: configService.get('GOOGLE_CALLBACK_URL'),
-      scope: ['email', 'profile'],
-    });
-  }
-
-  validate(accessToken: string, refreshToken: string, profile: any) {
-    return {
-      id: profile.id,
-      email: profile.emails[0].value,
-      name: profile.displayName
-    };
-  }
+export interface UserProfile {
+  id: string;
+  email: string;
+  name?: string;
 }
 
-@Injectable()
-export class AppleAuthStrategy extends PassportStrategy(AppleStrategy, 'apple') {
-  constructor(private configService: ConfigService) {
-    super({
-      clientID: configService.get('APPLE_CLIENT_ID'),
-      teamID: configService.get('APPLE_TEAM_ID'),
-      keyID: configService.get('APPLE_KEY_ID'),
-      privateKeyLocation: configService.get('APPLE_PRIVATE_KEY_LOCATION'),
-      callbackURL: configService.get('APPLE_CALLBACK_URL'),
-      scope: ['email', 'name'],
-    });
-  }
-
-  validate(accessToken: string, refreshToken: string, profile: any) {
-    return {
-      id: profile.id,
-      email: profile.email,
-      name: profile.name
-    };
-  }
+export interface Tokens {
+  accessToken: string;
+  refreshToken: string;
 }
 
 @Injectable()
@@ -55,30 +24,40 @@ export class AuthService {
     private configService: ConfigService,
   ) {}
 
-  async validateOAuthLogin(profile: any, provider: string) {
+  async validateOAuthLogin(profile: UserProfile, provider: string): Promise<Tokens> {
     const payload = {
-      id: profile.id,
-      email: provider === 'google' ? profile.emails[0].value : profile.email,
-      name: provider === 'google' ? profile.displayName : profile.name,
+      sub: profile.id,  // Using 'sub' is JWT standard for subject identifier
+      email: profile.email,
+      name: profile.name,
       provider
     };
     
     return this.generateTokens(payload);
   }
 
-  async refreshToken(refreshToken: string) {
+  async refreshToken(refreshToken: string): Promise<Tokens> {
     try {
-      const payload = this.jwtService.verify(refreshToken);
+      const payload = this.jwtService.verify(refreshToken, {
+        secret: this.configService.get('JWT_REFRESH_SECRET')
+      });
+      delete payload.exp; // Remove expiration from payload
+      delete payload.iat; // Remove issued at from payload
       return this.generateTokens(payload);
-    } catch {
+    } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
 
-  private generateTokens(payload: any) {
+  private generateTokens(payload: any): Tokens {
     return {
-      accessToken: this.jwtService.sign(payload, { expiresIn: '1h' }),
-      refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
+      accessToken: this.jwtService.sign(payload, { 
+        expiresIn: '1h',
+        secret: this.configService.get('JWT_ACCESS_SECRET')
+      }),
+      refreshToken: this.jwtService.sign(payload, { 
+        expiresIn: '7d',
+        secret: this.configService.get('JWT_REFRESH_SECRET')
+      }),
     };
   }
 }

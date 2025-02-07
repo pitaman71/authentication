@@ -32,11 +32,14 @@ const AppleLogo = (props: { theme?: 'light' | 'dark' }) => (
   </svg>
 );
 
-export const LoginScreen = ({ theme = 'dark' }: LoginScreenProps) => {
+export const LoginScreen = ({ theme = 'dark', children }: React.PropsWithChildren<LoginScreenProps>) => {
   const { loginWithGoogle, loginWithApple } = useAuth();
   
   return (
     <div className="login-container">
+      {
+        children
+      }
       <div className="login-button-container">
         <button onClick={loginWithGoogle} className={`login-button ${theme}`}>
           <GoogleLogo theme={theme} />

@@ -79,6 +79,9 @@ This creates cryptographically secure values suitable for JWT secrets.
 
 Create a `.env` file in the root directory of your project. Below is a detailed explanation of each required environment variable:
 
+### base URL for frontend service
+export CLIENT_URL=http://localhost:3000
+
 ### JWT Configuration
 - `JWT_SECRET`: A secure string used to sign and verify JSON Web Tokens. Use a strong, randomly generated value at least 32 characters long.
 - `JWT_EXPIRES_IN`: Duration until the access token expires (e.g., '1h', '30m'). Default: 1 hour
@@ -120,7 +123,8 @@ Add AuthModule to your app.module.ts:
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { AuthModule, authConfigSchema } from '@pitaman71/auth-nestjs';
 
 @Module({
@@ -129,6 +133,17 @@ import { AuthModule, authConfigSchema } from '@pitaman71/auth-nestjs';
       validationSchema: authConfigSchema,
     }),
     AuthModule,
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get('JWT_SECRET'),
+        signOptions: { 
+          expiresIn: '1h' 
+        },
+      }),
+      inject: [ConfigService],
+      global: true // Makes JwtModule available globally
+    })    
   ],
 })
 export class AppModule {}

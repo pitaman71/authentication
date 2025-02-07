@@ -50,6 +50,11 @@ export class AuthController {
 
   private handleOAuthCallback(res: Response, tokens: { accessToken: string; refreshToken: string }) {
     const clientUrl = this.configService.get('CLIENT_URL');
-    res.redirect(`${clientUrl}?code=${tokens.accessToken}`);
+    const queryParams = new URLSearchParams({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken
+    }).toString();
+    
+    res.redirect(`${clientUrl}?${queryParams}`);
   }
 }

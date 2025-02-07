@@ -11,6 +11,7 @@ export interface User {
 
 export interface AuthContextType {
   user: User | null;
+  accessToken: string|null;
   loginWithGoogle: () => void;
   loginWithApple: () => void;
   logout: () => Promise<void>;
@@ -31,7 +32,7 @@ interface DecodedToken {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [accessToken, setAccessToken] = useLocalStorage<string | null>('accessToken', null);
@@ -42,7 +43,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (accessToken) {
       try {
         const decoded = jwtDecode<DecodedToken>(accessToken);
-        if (decoded.exp * 1000 < Date.now()) {
+        const REFRESH_BUFFER = 5 * 60 * 1000; // 5 minutes in milliseconds
+        if ((decoded.exp * 1000) - REFRESH_BUFFER < Date.now()) {
           refreshAccessToken();
         } else {
           setUser({
@@ -61,24 +63,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Handle OAuth callback
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
+    const accessToken = params.get('accessToken');
+    const refreshToken = params.get('refreshToken');
     
-    if (code) {
-      fetch(`${API_URL}/auth/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
-      })
-      .then(res => res.json())
-      .then((data: TokenResponse) => {
-        setAccessToken(data.accessToken);
-        setRefreshToken(data.refreshToken);
-        window.history.replaceState({}, '', window.location.pathname);
-      })
-      .catch(error => {
-        console.error('Token exchange error:', error);
-        logout();
-      });
+    if (accessToken && refreshToken) {
+      setAccessToken(accessToken);
+      setRefreshToken(refreshToken);
+      window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
 
@@ -134,6 +125,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthContext.Provider value={{
       user,
+      accessToken,
       loginWithGoogle,
       loginWithApple,
       logout,

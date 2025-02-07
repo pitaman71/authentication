@@ -1,10 +1,10 @@
 {
   "name": "@pitaman71/auth-nestjs",
-  "version": "0.5.7",
+  "version": "0.5.27",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist", "public"
+    "dist"
   ],
   "scripts": {
     "build": "tsc",
