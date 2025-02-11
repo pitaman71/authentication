@@ -77,10 +77,24 @@ This creates cryptographically secure values suitable for JWT secrets.
 
 ## Environment Variables
 
-Create a `.env` file in the root directory of your project. Below is a detailed explanation of each required environment variable:
+When running the backend service locally (e.g. for development),
+the required configuration settings are read from the calling 
+environment. For convenience you may wish to store durable
+values for the following environment variables in a file
+`backend/.env`.
+
+Below is a detailed explanation of each required environment variable:
 
 ### base URL for frontend service
+
+The OAuth flow requires that the backend handle a callback from the
+social login provider (e.g. Apple or Google) and the redirect back to
+the frontend code, which means the backend must know the deployment
+location of the frontend.
+
+```
 export CLIENT_URL=http://localhost:3000
+```
 
 ### JWT Configuration
 - `JWT_SECRET`: A secure string used to sign and verify JSON Web Tokens. Use a strong, randomly generated value at least 32 characters long.
@@ -95,15 +109,15 @@ export CLIENT_URL=http://localhost:3000
   - For local development: `http://localhost:3000/auth/google/callback`
 
 ### Apple Sign In Configuration
-- `APPLE_CLIENT_ID`: Your App ID/Services ID from Apple Developer portal
+- `APPLE_CLIENT_ID`: Your Services ID (not your app id) from Apple Developer portal
 - `APPLE_TEAM_ID`: Your 10-character Team ID from Apple Developer account
 - `APPLE_KEY_ID`: The 10-character Key ID for your Sign in with Apple private key
-- `APPLE_PRIVATE_KEY_LOCATION`: File path to your `.p8` private key file
+- `APPLE_PRIVATE_KEY_LOCATION`: File path to your `.p8` private key file, used for local development
   - Example: `./config/AuthKey_XXXXXXXXXX.p8`
+- `APPLE_PRIVATE_KEY_BASE64`: Base64 encoding of your private key file, used for cloud deployment / production
 - `APPLE_CALLBACK_URL`: URL where Apple will redirect after authentication
   - Format: `http://your-domain/auth/apple/callback`
   - For local development: `http://localhost:3000/auth/apple/callback`
-
 
 ## Module Structure
 
@@ -122,32 +136,21 @@ src/
 Add AuthModule to your app.module.ts:
 
 ```typescript
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { JwtModule } from '@nestjs/jwt';
-import { AuthModule, authConfigSchema } from '@pitaman71/auth-nestjs';
+import { AuthModule } from '@pitaman71/auth-nestjs';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      validationSchema: authConfigSchema,
+      load: [ ConfigLoader ],
+      isGlobal: true,
+      envFilePath: ['.env']
     }),
-    AuthModule,
-    JwtModule.registerAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
-        signOptions: { 
-          expiresIn: '1h' 
-        },
-      }),
-      inject: [ConfigService],
-      global: true // Makes JwtModule available globally
-    })    
+    AuthModule
   ],
+  controllers: [],
+  providers: [],
 })
-export class AppModule {}
-```
+export class AppModule {}```
 
 ## API Endpoints
 

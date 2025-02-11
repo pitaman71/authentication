@@ -37,9 +37,11 @@ export const LoginScreen = ({ theme = 'dark', children }: React.PropsWithChildre
   
   return (
     <div className="login-container">
+      <div className="login-text-container">
       {
         children
       }
+      </div>
       <div className="login-button-container">
         <button onClick={loginWithGoogle} className={`login-button ${theme}`}>
           <GoogleLogo theme={theme} />
