@@ -1,8 +1,4 @@
 // backend/src/auth.config.ts
-import { writeFileSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
-
 import { Module, Injectable, OnModuleInit } from '@nestjs/common';
 import { registerAs, ConfigService, ConfigType } from '@nestjs/config';
 import { z } from 'zod';

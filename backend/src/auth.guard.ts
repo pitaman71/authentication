@@ -8,10 +8,10 @@ export class AuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const token = this.extractTokenFromHeader(request);
+    const token = this.extractToken(request);
     
     if (!token) {
-      console.error(`Request failed, no token present ${request.url}`)
+      console.error(`Request failed, no token present ${request.url}`);
       throw new UnauthorizedException();
     }
 
@@ -21,17 +21,26 @@ export class AuthGuard implements CanActivate {
       request['user'] = payload;
       return true;
     } catch(err) {
-      console.error(`Request failed, JWT verification failed ${request.url} ${err}`)
+      console.error(`Request failed, JWT verification failed ${request.url} ${err}`);
       throw new UnauthorizedException();
     }
   }
 
-  private extractTokenFromHeader(request: any): string | undefined {
-    const [type, token] = request.headers.authorization?.split(' ') ?? [];
-    if(type !== 'Bearer') {
-      console.error(`Request will fail with unexpected authorization type ${type}`)
+  private extractToken(request: any): string | undefined {
+    // First try to extract from Authorization header
+    const [type, headerToken] = request.headers.authorization?.split(' ') ?? [];
+    if (type === 'Bearer') {
+      return headerToken;
+    } else if (type) {
+      console.error(`Request contains unexpected authorization type ${type}`);
     }
-    return type === 'Bearer' ? token : undefined;
+
+    // If no valid header token, try query parameter
+    const queryToken = request.query.accessToken;
+    if (queryToken) {
+      return queryToken;
+    }
+
+    return undefined;
   }
 }
-
